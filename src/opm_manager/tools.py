@@ -63,30 +63,38 @@ def init_network_volume(network, materials, forecast, p):
         excess = supplier.ship_to(dc, material, forecast)
 
 
-def get_availability(fulfillment):
+def get_availability(network, fulfillment):
     """
     Get the availability of a week
-    :param fulfillment: dict {mid: (demand, unfulfilled, frequency}
+    :param network:
+    :param fulfillment:
     :return:
     """
-    availability_by_freq = {f: [] for f in FREQUENCY_WEIGHTS}
+    avail_by_freq = {f: [] for f in FREQUENCY_WEIGHTS}
+    avail_by_dc = {sku[5:]: avail_by_freq for sku in fulfillment}
 
-    for mid in fulfillment:
-        demand = fulfillment[mid][0]
-        unfulfilled = fulfillment[mid][1]
-        frequency = fulfillment[mid][2]
-
+    for sku in fulfillment:
+        mid = sku[:5]
+        dcid = sku[5:]
+        demand = fulfillment[sku][0]
+        unfulfilled = fulfillment[sku][1]
+        frequency = fulfillment[sku][2]
         availability = (demand + unfulfilled) / demand  # unfulfilled is negative
-        availability_by_freq[frequency].append(availability)
+        avail_by_dc[dcid][frequency].append(availability)
 
-    aves_by_freq = {f: sum([a for a in availability_by_freq[f]]) / len(availability_by_freq[f]) for f in availability_by_freq}
+    individual_availabilities = []
+    for dcid in avail_by_dc:
+        vals = {f: sum(avail_by_dc[dcid][f]) / len(avail_by_dc[dcid][f]) for f in avail_by_dc[dcid]}
+        dc_availability = 0
+        for f in vals:
+            dc_availability += FREQUENCY_WEIGHTS[f] * vals[f]
+        network.nodes[dcid].individual_score = dc_availability
+        individual_availabilities.append(dc_availability)
 
-    final = 0
-    for f in aves_by_freq:
-        final += FREQUENCY_WEIGHTS[f] * aves_by_freq[f]
+    total_availability = sum(individual_availabilities) / len(individual_availabilities)
+    network_availability = network.get_network_score()
 
-    return final
-
+    return total_availability, network_availability
 
 
 

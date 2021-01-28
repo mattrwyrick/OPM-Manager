@@ -28,15 +28,6 @@ class Node(object):
         """
         return sum((n.weight for n in self.neighbors))
 
-    def update_score(self):
-        """
-        Update the individual score for a Node (Distribution Center)
-        :return:
-        """
-        if self.is_dc:
-            return self.location.get_score()
-        return -1
-
     def __deepcopy__(self, memodict={}):
         """
         Deep clone of a Node
@@ -78,28 +69,26 @@ class Network(object):
 
         self.nodes = {n.location.id: n for n in nodes}
 
-    def update_scores(self):
+    def get_network_score(self):
         """
-        Update the scores in within the network and calculate the network score
+        Update the scores in within the network and calculate the network score (relative)
         :return:
         """
-        for node in self.nodes:
-            node.update_score()
-
-        for node in self.nodes:
+        for key in self.nodes:
+            node = self.nodes[key]
             if node.is_dc:
-                node.update_score()
                 neighbors_total = 0
                 for neighbor in node.neighbors:
                     weight = (neighbor.weight / node.neighbors_magnitude)
                     neighbors_total += weight * neighbor.individual_score
 
                 neighbor_score = neighbors_total / len(node.neighbors)
-                relative_score = (node.score + neighbor_score) / 2
+                relative_score = (node.individual_score + neighbor_score) / 2
                 node.relative_score = relative_score
 
         total = 0
-        for node in self.nodes:
+        for key in self.nodes:
+            node = self.nodes[key]
             total += node.relative_score
         score = total / len(self.nodes)
 

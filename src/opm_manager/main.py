@@ -22,13 +22,15 @@ def main():
     forecast_moderate = load_simulation(settings.MODERATE_FORECAST_PATH)
     forecast_bad = load_simulation(settings.BAD_FORECAST_PATH)
 
-    forecast = forecast_moderate
+    forecast = forecast_good
 
     init_network_volume(network, materials, forecast, .30)
     for w in range(season_length):
-        availability = execute_week(network, materials, season, forecast)
-        a = round(availability*100, 3)
-        print(f"<b>Week {w+1}</b> {a}%  ")
+        ind_av, network_av = execute_week(network, materials, season, forecast)
+        ind = round(ind_av*100, 3)
+        net = round(network_av*100, 3)
+        print(f"<b>Week {w+1}</b> {ind}%  ")
+        print(f"<b>Week {w+1}</b> {net}%  ")
 
 
 def execute_week(network, materials, season, forecast):
@@ -45,7 +47,7 @@ def execute_week(network, materials, season, forecast):
     if week_actual is None:
         return None
 
-    fulfillment = {mid: [0, 0, materials[mid].frequency] for mid in materials}
+    fulfillment = {sku: [0, 0, materials[sku[:5]].frequency] for sku in week_actual}
 
     for sku in week_actual:
         mid = sku[:5]
@@ -60,10 +62,10 @@ def execute_week(network, materials, season, forecast):
         excess = supplier.ship_to(dc, material, forecast)  # not enough dc space --> excess
         unfulfilled = dc.sell_inventory(material, actual)
 
-        fulfillment[mid][0] += actual
-        fulfillment[mid][1] += unfulfilled
+        fulfillment[sku][0] += actual
+        fulfillment[sku][1] += unfulfilled
 
-    return get_availability(fulfillment)
+    return get_availability(network, fulfillment)
 
 
 if __name__ == "__main__":
